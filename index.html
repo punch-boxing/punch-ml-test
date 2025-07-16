@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>PUNCH! Model Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./index.js"></script>
+  </head>
+  <body>
+    <h1>PUNCH! Model Test</h1>
+    <div id="selector">Fetching Storage...</div>
+
+    <div id="model-status" class="status">Loading Model...</div>
+    <div id="data-status" class="status">Loading Data...</div>
+
+    <div id="model-info"></div>
+    <button id="predict-btn" onclick="makePrediction()">Make Prediction</button>
+    <button id="auto-predict-btn" onclick="autoPrediction()">
+      Auto Predict
+    </button>
+    <button id="evaluate-btn" onclick="evaluateModel()">Evaluate Model</button>
+    <div id="prediction-result"></div>
+  </body>
+</html>
