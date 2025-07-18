@@ -21,7 +21,7 @@ function indexToPunch(index) {
 
 async function fetchStorage() {
   const url =
-    "https://raw.githubusercontent.com/punch-boxing/punch-assets/main/";
+    "https://raw.githubusercontent.com/punch-boxing/punch-assets/torch/";
   const selector = document.getElementById("selector");
 
   try {
@@ -31,7 +31,8 @@ async function fetchStorage() {
     for (let i = 3; i <= 5; i += 2) {
       for (let j = 1; j <= 8; j++) {
         for (let k = 5; k <= 20; k += 5) {
-          const modelUrl = `${url}models/GRU_${i}D_${j}L_${k}W/model.json`;
+          // GRU_3I_10H_2L_20W.pt
+          const modelUrl = `${url}models/GRU_${i}I_10H_${j}L_${k}W.onnx`;
           const response = await fetch(modelUrl);
           if (!response.ok) {
             console.error(
@@ -40,10 +41,8 @@ async function fetchStorage() {
             );
             continue;
           }
-          const modelData = await response.json();
-          console.log(`Model ${i}_${j}_${k} data:`, modelData);
           models.push({
-            name: `GRU_${i}D_${j}L_${k}W`,
+            name: `GRU_${i}I_${j}L_${k}W`,
             url: modelUrl,
           });
         }
@@ -92,127 +91,120 @@ async function fetchStorage() {
     .join("");
 }
 
-// async function loadModel() {
-//   try {
-//     model = await tf.loadLayersModel(
-//       `${document.getElementById("model-select").value}`
-//     );
+async function loadModel() {
+  try {
+    const session = await ort.InferenceSession.create(
+      document.getElementById("model-select").value
+    );
 
-//     // Compile the model for evaluation
-//     model.compile({
-//       optimizer: "adam",
-//       loss: "sparseCategoricalCrossentropy",
-//       metrics: ["accuracy"],
-//     });
+    // Store the session for later use
+    model = session;
 
-//     document.getElementById("model-status").innerHTML =
-//       "✅ Model loaded successfully!";
+    // Update UI to indicate successful model load
+    document.getElementById("model-status").innerHTML =
+      "✅ Model loaded successfully!";
 
-//     // Display model information
-//     const modelInfo = document.getElementById("model-info");
-//     modelInfo.innerHTML = `
-//                     <h3>Model Information:</h3>
-//                     <p><strong>Input Shape:</strong> ${JSON.stringify(
-//                       model.inputs[0].shape
-//                     )}</p>
-//                     <p><strong>Output Shape:</strong> ${JSON.stringify(
-//                       model.outputs[0].shape
-//                     )}</p>
-//                     <p><strong>Total Parameters:</strong> ${model.countParams()}</p>
-//                     <p><strong>Model Type:</strong> ${
-//                       model.constructor.name
-//                     }</p>
-//                 `;
+    // Display basic model info
+    const modelInfo = document.getElementById("model-info");
+    modelInfo.innerHTML = `
+      <h3>Model Information:</h3>
+      <p><strong>Model Path:</strong> ${
+        document.getElementById("model-select").value
+      }</p>
+      <p><strong>Session Loaded:</strong> ${!!model}</p>
+    `;
+    console.log("ONNX model loaded:", model);
+  } catch (error) {
+    document.getElementById("model-status").innerHTML =
+      "❌ Error loading model: " + error.message;
+    console.error("Error loading model:", error);
+  }
+}
 
-//     // Log model summary
-//     console.log("Model loaded:", model);
-//     model.summary();
-//   } catch (error) {
-//     document.getElementById("model-status").innerHTML =
-//       "❌ Error loading model: " + error.message;
-//     console.error("Error loading model:", error);
-//   }
-// }
+async function loadData() {
+  try {
+    const dataUrl = document.getElementById("data-select").value;
+    const response = await fetch(dataUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data from ${dataUrl}`);
+    }
+    const dataText = await response.text();
+    const dataRows = dataText
+      .trim()
+      .split("\n")
+      .map((row) =>
+        row.split(",").map((val) => {
+          const num = parseFloat(val);
+          return isNaN(num) ? val.trim() : num;
+        })
+      );
+    data = dataRows;
+    document.getElementById("data-status").innerHTML =
+      "✅ Data loaded successfully!";
+  } catch (error) {
+    document.getElementById("data-status").innerHTML =
+      "❌ Error loading data: " + error.message;
+    console.error("Error loading data:", error);
+  }
+}
 
-// async function loadData() {
-//   try {
-//     const dataUrl = document.getElementById("data-select").value;
-//     const response = await fetch(dataUrl);
-//     if (!response.ok) {
-//       throw new Error(`Failed to fetch data from ${dataUrl}`);
-//     }
-//     const dataText = await response.text();
-//     const dataRows = dataText
-//       .trim()
-//       .split("\n")
-//       .map((row) =>
-//         row.split(",").map((val) => {
-//           const num = parseFloat(val);
-//           return isNaN(num) ? val.trim() : num;
-//         })
-//       );
-//     data = dataRows;
-//     document.getElementById("data-status").innerHTML =
-//       "✅ Data loaded successfully!";
-//   } catch (error) {
-//     document.getElementById("data-status").innerHTML =
-//       "❌ Error loading data: " + error.message;
-//     console.error("Error loading data:", error);
-//   }
-// }
+async function makePrediction() {
+  if (!model) {
+    alert("Model not loaded yet!");
+    return;
+  }
 
-// async function makePrediction() {
-//   if (!model) {
-//     alert("Model not loaded yet!");
-//     return;
-//   }
-
-//   try {
-//     globalIndex++;
-//     const prediction = model.predict(
-//       tf.tensor(data[globalIndex].slice(2, 7)).reshape([1, 1, 5])
-//     );
-//     const predictionData = await prediction.data();
-//     console.log(data[globalIndex]);
-//     predictedIndex = predictionData.indexOf(Math.max(...predictionData));
-//     const resultDiv = document.getElementById("prediction-result");
-//     resultDiv.innerHTML = `
-//                     <h3>Prediction Results:</h3>
-//                     <p><strong>Input Values:</strong></p>
-//                     <ul>
-//                         ${data[globalIndex]
-//                           .slice(2, 7)
-//                           .map((val) => `<li>${val.toFixed(6)}</li>`)
-//                           .join("")}
-//                     </ul>
-//                     <p><strong>Prediction Values:</strong></p>
-//                     <ul>
-//                         ${Array.from(predictionData)
-//                           .map(
-//                             (val, idx) =>
-//                               `<li>Class ${idx}: ${val.toFixed(6)} (${(
-//                                 val * 100
-//                               ).toFixed(2)}%)</li>`
-//                           )
-//                           .join("")}
-//                     </ul>
-//                     <p><strong>Predicted Class:</strong> ${predictedIndex}</p>
-//                     <p><strong>Predicted Punch:</strong> ${indexToPunch(
-//                       predictedIndex
-//                     )}</p>
-//                     <p><strong>Real Data: ${data[globalIndex][7]}</strong></p>
-//                     <p><strong>Is Correct:</strong> ${
-//                       indexToPunch(predictedIndex) === data[globalIndex][7]
-//                         ? "✅ Yes"
-//                         : "❌ No"
-//                     }</p>
-//                 `;
-//   } catch (error) {
-//     document.getElementById("prediction-result").innerHTML =
-//       "❌ Error making prediction: " + error.message;
-//     console.error("Error making prediction:", error);
-//   }
-// }
+  try {
+    globalIndex++;
+    const inputTensor = new ort.Tensor(
+      "float32",
+      new Float32Array(
+        data[globalIndex].slice(5, 8).map((val) => parseFloat(val))
+      ),
+      [1, 1, 3]
+    );
+    const output = await model.run({ input: inputTensor });
+    console.log("Model output:", output);
+    const predictionData = output.output.data;
+    const predictedIndex = predictionData.indexOf(Math.max(...predictionData));
+    const resultDiv = document.getElementById("prediction-result");
+    resultDiv.innerHTML = `
+                    <h3>Prediction Results:</h3>
+                    <p><strong>Input Values:</strong></p>
+                    <ul>
+                        ${data[globalIndex]
+                          .slice(2, 7)
+                          .map((val) => `<li>${val.toFixed(6)}</li>`)
+                          .join("")}
+                    </ul>
+                    <p><strong>Prediction Values:</strong></p>
+                    <ul>
+                        ${Array.from(predictionData)
+                          .map(
+                            (val, idx) =>
+                              `<li>Class ${idx}: ${val.toFixed(6)} (${(
+                                val * 100
+                              ).toFixed(2)}%)</li>`
+                          )
+                          .join("")}
+                    </ul>
+                    <p><strong>Predicted Class:</strong> ${predictedIndex}</p>
+                    <p><strong>Predicted Punch:</strong> ${indexToPunch(
+                      predictedIndex
+                    )}</p>
+                    <p><strong>Real Data: ${data[globalIndex][14]}</strong></p>
+                    <p><strong>Is Correct:</strong> ${
+                      indexToPunch(predictedIndex) === data[globalIndex][14]
+                        ? "✅ Yes"
+                        : "❌ No"
+                    }</p>
+                `;
+  } catch (error) {
+    document.getElementById("prediction-result").innerHTML =
+      "❌ Error making prediction: " + error.message;
+    console.error("Error making prediction:", error);
+  }
+}
 
 // async function evaluateModel() {
 //   if (!model) {
